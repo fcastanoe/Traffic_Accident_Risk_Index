@@ -112,7 +112,7 @@ python Inferences/inference_risk_index.py
 cd risk-server
 source venv/bin/activate
 python app.py
-# Luego abre en tu navegador: http://<IP-de-tu-Pi>:5000
+# Luego abre en tu navegador: http://IP-de-tu-Pi:5000
 ```
 6. Crear servicio systemd (fuera del repositorio):
 
@@ -148,7 +148,7 @@ sudo systemctl start risk-server.service
 sudo systemctl status risk-server.service
 ```
 
-7. Acceder desde cualquier navegador a http://<IP-de-tu-Pi>:5000/.
+7. Acceder desde cualquier navegador a http://IP-de-tu-Pi:5000/.
 ---
 ## 🔍 Ejemplos de Uso
 
@@ -177,7 +177,7 @@ Al ejecutarlo verás en consola:
 
 2. Uso vía API REST con interfaz web
 
-   1. Navega en tu navegador a http://<IP-de-tu-Pi>:5000/.
+   1. Navega en tu navegador a http://IP-de-tu-Pi:5000/.
    2. Haz clic en “Seleccionar imagen” y busca el archivo local que desees analizar.
    3. Pulsa el botón “Analizar Imagen”.
    4. Al momento, la página mostrará:
@@ -185,8 +185,6 @@ Al ejecutarlo verás en consola:
       - La imagen procesada con los recuadros de detección de huecos.
 
 <img width="640" height="640" alt="image" src="https://github.com/user-attachments/assets/bb08e359-ecd8-4d98-8911-08470760d1da" />
-
-
 
 ---
 
