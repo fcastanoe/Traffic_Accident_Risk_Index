@@ -2,41 +2,135 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Riesgo de V�a</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>An�lisis de Riesgo de Carretera</title>
+  <style>
+    /* Reset ligero */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f4f7fa;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    h1 {
+      margin-bottom: 20px;
+      color: #2c3e50;
+      font-size: 2rem;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+      width: 100%;
+      max-width: 400px;
+    }
+    input[type="file"] {
+      margin-bottom: 15px;
+    }
+    button {
+      background-color: #3498db;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #2980b9;
+    }
+    #result-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 800px;
+    }
+    #info-card {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      padding: 20px;
+      width: 100%;
+      margin-bottom: 20px;
+    }
+    #info-card ul {
+      list-style: none;
+    }
+    #info-card li {
+      margin-bottom: 10px;
+      font-size: 1rem;
+    }
+    #info-card li span.label {
+      font-weight: bold;
+      color: #2c3e50;
+    }
+    #result_img {
+      max-width: 100%;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+  </style>
 </head>
 <body>
-  <h1>Sube una foto de la carretera</h1>
+  <h1>Analisis de Riesgo de Carretera</h1>
   <form id="frm" enctype="multipart/form-data">
-    <input type="file" name="image" accept="image/*"/>
-    <button type="submit">Analizar</button>
-    </form>
-    <pre id="output"></pre>
-    <img id="result_img" alt="Imagen procesada" />
+    <input type="file" name="image" accept="image/*" required />
+    <button type="submit">Analizar Imagen</button>
+  </form>
+  <div id="result-container">
+    <div id="info-card" style="display:none;">
+      <ul>
+        <li><span class="label">Superficie:</span> <span id="surface"></span></li>
+        <li><span class="label">Clima:</span> <span id="weather"></span></li>
+        <li><span class="label">Huecos detectados:</span> <span id="holes"></span></li>
+        <li><span class="label">Indice de riesgo:</span> <span id="risk"></span></li>
+        <li><span class="label">RecomendaciOn:</span> <span id="recommend"></span></li>
+      </ul>
+    </div>
+    <img id="result_img" alt="Imagen procesada" style="display:none;"/>
+  </div>
 
-    <script>
+  <script>
     const form = document.getElementById("frm");
-    const output = document.getElementById("output");
+    const infoCard = document.getElementById("info-card");
     const resultImg = document.getElementById("result_img");
+    const surfaceEl = document.getElementById("surface");
+    const weatherEl = document.getElementById("weather");
+    const holesEl = document.getElementById("holes");
+    const riskEl = document.getElementById("risk");
+    const recommendEl = document.getElementById("recommend");
 
     form.onsubmit = async e => {
-        e.preventDefault();
-        const fd = new FormData(form);
+      e.preventDefault();
+      const fd = new FormData(form);
+      const resp = await fetch("/analyze", { method: "POST", body: fd });
+      const json = await resp.json();
 
-        const resp = await fetch("/analyze", { method: "POST", body: fd });
-        const json = await resp.json();
+      // Mostrar datos
+      surfaceEl.innerText    = `${json.surface[0]} (${json.surface[1]})`;
+      weatherEl.innerText    = `${json.weather[0]} (${json.weather[1]})`;
+      holesEl.innerText      = json.holes;
+      riskEl.innerText       = json.risk;
+      recommendEl.innerText  = json.recommendation || json.recommend;
 
-        // Mostrar los datos num�ricos
-        output.innerText = JSON.stringify({
-            surface:      json.surface,
-            weather:      json.weather,
-            holes:        json.holes,
-            risk:         json.risk,
-            recommendation: json.recommend
-        }, null, 2);
+      infoCard.style.display = 'block';
 
-        // Mostrar la imagen anotada
-        resultImg.src = json.annotated_image;
+      // Mostrar imagen
+      resultImg.src = json.annotated_image;
+      resultImg.style.display = 'block';
     };
-    </script>
+  </script>
 </body>
 </html>
+
