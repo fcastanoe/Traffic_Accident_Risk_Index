@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Riesgo de V�a</title>
+</head>
+<body>
+  <h1>Sube una foto de la carretera</h1>
+  <form id="frm" enctype="multipart/form-data">
+    <input type="file" name="image" accept="image/*"/>
+    <button type="submit">Analizar</button>
+    </form>
+    <pre id="output"></pre>
+    <img id="result_img" alt="Imagen procesada" />
+
+    <script>
+    const form = document.getElementById("frm");
+    const output = document.getElementById("output");
+    const resultImg = document.getElementById("result_img");
+
+    form.onsubmit = async e => {
+        e.preventDefault();
+        const fd = new FormData(form);
+
+        const resp = await fetch("/analyze", { method: "POST", body: fd });
+        const json = await resp.json();
+
+        // Mostrar los datos num�ricos
+        output.innerText = JSON.stringify({
+            surface:      json.surface,
+            weather:      json.weather,
+            holes:        json.holes,
+            risk:         json.risk,
+            recommendation: json.recommend
+        }, null, 2);
+
+        // Mostrar la imagen anotada
+        resultImg.src = json.annotated_image;
+    };
+    </script>
+</body>
+</html>

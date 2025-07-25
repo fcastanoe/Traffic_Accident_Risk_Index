@@ -39,7 +39,7 @@ surface_risk = {
 # --- Detector TFLite de baches ---
 TFLITE_PATH_DET = "/home/fcastanoe/Downloads/best_1_float32.tflite"
 MODEL_SIZE_DET  = (512, 512)
-CONF_THRESH_DET = 0.25
+CONF_THRESH_DET = 0.4
 IOU_THRESH_DET  = 0.5
 interpreter_det = tf.lite.Interpreter(model_path=TFLITE_PATH_DET)
 interpreter_det.allocate_tensors()
@@ -134,84 +134,88 @@ def compute_risk(w_lbl, s_lbl, holes):
     return W1*wr + W2*sr + W3*pr
 
 def recommendation(score):
-    if score >= 0.7: return "ALTO riesgo – manejar con MUCHA precaución"
-    if score >= 0.4: return "Riesgo moderado – con precaución"
-    return "Bajo riesgo – condiciones razonables"
+    if score >= 0.7: return "ALTO riesgo - manejar con MUCHA precaución"
+    if score >= 0.4: return "Riesgo moderado - con precaución"
+    return "Bajo riesgo - condiciones razonables"
 
 # —————————————————————————
 # 3) Interfaz Tkinter
 # —————————————————————————
 
-window = tk.Tk()
-window.title("Análisis de Riesgo de Carretera")
+def launch_gui():
+    window = tk.Tk()
+    window.title("An�lisis de Riesgo de Carretera")
+    
+    def on_select():
+        path = filedialog.askopenfilename(filetypes=[("Imagen", "*.jpg *.png")])
+        if not path: return
 
-def on_select():
-    path = filedialog.askopenfilename(filetypes=[("Imagen", "*.jpg *.png")])
-    if not path: return
+        # Clasificación
+        (s_lbl,s_p),(w_lbl,w_p) = run_cls(path)
 
-    # Clasificación
-    (s_lbl,s_p),(w_lbl,w_p) = run_cls(path)
+        # Detección TFLite de baches
+        det_img, holes, det_time = infer_tflite_det(path)
 
-    # Detección TFLite de baches
-    det_img, holes, det_time = infer_tflite_det(path)
+        # Cálculo de riesgo
+        score = compute_risk(w_lbl, s_lbl, holes)
+        rec   = recommendation(score)
 
-    # Cálculo de riesgo
-    score = compute_risk(w_lbl, s_lbl, holes)
-    rec   = recommendation(score)
+        # Mostrar original y detección
+        img = Image.open(path).convert("RGB").resize((300,300))
+        det_img_tk = det_img.resize((300,300))
+        tk_orig = ImageTk.PhotoImage(img)
+        tk_det  = ImageTk.PhotoImage(det_img_tk)
+        lbl_orig.configure(image=tk_orig); lbl_orig.image = tk_orig
+        lbl_det.configure(image=tk_det);   lbl_det.image = tk_det
 
-    # Mostrar original y detección
-    img = Image.open(path).convert("RGB").resize((300,300))
-    det_img_tk = det_img.resize((300,300))
-    tk_orig = ImageTk.PhotoImage(img)
-    tk_det  = ImageTk.PhotoImage(det_img_tk)
-    lbl_orig.configure(image=tk_orig); lbl_orig.image = tk_orig
-    lbl_det.configure(image=tk_det);   lbl_det.image = tk_det
+        # Mensajes por condición
+        soil_msgs = {
+            "Surface_Wet":     "Reducir velocidad: el suelo está mojado.",
+            "Surface_Dry":     "Superficie seca: condiciones normales.",
+            "Surface_Unknown": "Estado de la superficie desconocido: extrema precaución."
+        }
+        weather_msgs = {
+            "Weather_Rain":    "Lluvia: mantener distancia de seguridad y usar limpiaparabrisas.",
+            "Weather_Fog":     "Niebla: encender luces antiniebla y reducir velocidad.",
+            "Weather_Clear":   "Cielo despejado: condiciones buenas.",
+            "Weather_Unknown": "Clima desconocido: conducir con precaución."
+        }
+        hole_msgs = {
+            range(0, 1):   "Sin huecos detectados.",
+            range(1, 6):   "Algunos huecos: reducir velocidad ligeramente.",
+            range(6, 21):  "Muchos huecos: máxima precaución y velocidad muy baja."
+        }
 
-    # Mensajes por condición
-    soil_msgs = {
-        "Surface_Wet":     "Reducir velocidad: el suelo está mojado.",
-        "Surface_Dry":     "Superficie seca: condiciones normales.",
-        "Surface_Unknown": "Estado de la superficie desconocido: extrema precaución."
-    }
-    weather_msgs = {
-        "Weather_Rain":    "Lluvia: mantener distancia de seguridad y usar limpiaparabrisas.",
-        "Weather_Fog":     "Niebla: encender luces antiniebla y reducir velocidad.",
-        "Weather_Clear":   "Cielo despejado: condiciones buenas.",
-        "Weather_Unknown": "Clima desconocido: conducir con precaución."
-    }
-    hole_msgs = {
-        range(0, 1):   "Sin huecos detectados.",
-        range(1, 6):   "Algunos huecos: reducir velocidad ligeramente.",
-        range(6, 21):  "Muchos huecos: máxima precaución y velocidad muy baja."
-    }
+        msg_soil    = soil_msgs.get(s_lbl, "")
+        msg_weather = weather_msgs.get(w_lbl, "")
+        msg_holes   = next(v for k, v in hole_msgs.items() if holes in k)
 
-    msg_soil    = soil_msgs.get(s_lbl, "")
-    msg_weather = weather_msgs.get(w_lbl, "")
-    msg_holes   = next(v for k, v in hole_msgs.items() if holes in k)
+        info = (
+            "PREDICCIONES:\n"
+            f"  • Clima: {w_lbl} ({w_p:.2f})\n"
+            f"  • Condición de carretera: {s_lbl} ({s_p:.2f})\n"
+            f"  • Huecos: {holes}\n\n"
+            "RIESGO:\n"
+            f"  • Índice de riesgo: {score:.2f} → {rec}\n\n"
+            "RECOMENDACIONES ADICIONALES:\n"
+            f"  • {msg_soil}\n"
+            f"  • {msg_weather}\n"
+            f"  • {msg_holes}"
+        )
+        txt.set(info)
 
-    info = (
-        "PREDICCIONES:\n"
-        f"  • Clima: {w_lbl} ({w_p:.2f})\n"
-        f"  • Condición de carretera: {s_lbl} ({s_p:.2f})\n"
-        f"  • Huecos: {holes}\n\n"
-        "RIESGO:\n"
-        f"  • Índice de riesgo: {score:.2f} → {rec}\n\n"
-        "RECOMENDACIONES ADICIONALES:\n"
-        f"  • {msg_soil}\n"
-        f"  • {msg_weather}\n"
-        f"  • {msg_holes}"
-    )
-    txt.set(info)
+    btn = tk.Button(window, text="Seleccionar imagen", command=on_select)
+    btn.pack(pady=5)
 
-btn = tk.Button(window, text="Seleccionar imagen", command=on_select)
-btn.pack(pady=5)
+    frame = tk.Frame(window)
+    frame.pack()
+    lbl_orig = tk.Label(frame); lbl_orig.grid(row=0, column=0, padx=10)
+    lbl_det  = tk.Label(frame); lbl_det .grid(row=0, column=1, padx=10)
 
-frame = tk.Frame(window)
-frame.pack()
-lbl_orig = tk.Label(frame); lbl_orig.grid(row=0, column=0, padx=10)
-lbl_det  = tk.Label(frame); lbl_det .grid(row=0, column=1, padx=10)
+    txt = tk.StringVar()
+    tk.Label(window, textvariable=txt, font=("Arial",12), justify="left").pack(pady=10)
+    
+    window.mainloop()
 
-txt = tk.StringVar()
-tk.Label(window, textvariable=txt, font=("Arial",12), justify="left").pack(pady=10)
-
-window.mainloop()
+if __name__ == "__main__":
+    launch_gui()
